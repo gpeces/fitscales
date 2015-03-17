@@ -1,7 +1,7 @@
 package eu.paulburton.fitscales;
 
 import com.larvalabs.svgandroid.SVG;
-import com.larvalabs.svgandroid.SVGParser;
+import com.larvalabs.svgandroid.SVGBuilder;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -49,7 +49,8 @@ public class BoardView extends View
 
     private void init()
     {
-        SVG svg = SVGParser.getSVGFromResource(getResources(), R.raw.wii_balance_board);
+        SVG svg = new SVGBuilder()
+                .readFromResource(getResources(), R.raw.wii_balance_board).build();
         svgLimits = svg.getLimits();
         svgPicture = svg.getPicture();
         

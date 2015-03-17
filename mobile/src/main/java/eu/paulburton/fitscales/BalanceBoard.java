@@ -16,7 +16,7 @@ import android.util.Log;
 public class BalanceBoard
 {
     private static final String TAG = "BalanceBoard";
-    private static final boolean DEBUG = false;
+    private static final boolean DEBUG = true ;
 
     private BluetoothAdapter btAdapter;
     private BluetoothDevice dev;
