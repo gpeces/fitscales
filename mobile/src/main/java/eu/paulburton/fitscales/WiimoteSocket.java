@@ -8,6 +8,8 @@ import android.os.ParcelUuid;
 
 public final class WiimoteSocket
 {
+    private static final int TYPE_L2CAP = 3;
+
     public static BluetoothSocket create(BluetoothDevice dev, int port)
     {
         try {
@@ -18,7 +20,7 @@ public final class WiimoteSocket
                     boolean.class, BluetoothDevice.class, int.class, ParcelUuid.class);
            
             construct.setAccessible(true);
-            return construct.newInstance(3 /* TYPE_L2CAP */, -1, false, false, dev, port, null);
+            return construct.newInstance(TYPE_L2CAP, -1, false, false, dev, port, null);
         } catch (Exception ex) {
             return null;
         }

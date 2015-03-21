@@ -6,7 +6,6 @@ import com.actionbarsherlock.app.SherlockFragment;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuInflater;
 import com.actionbarsherlock.view.MenuItem;
-import eu.paulburton.fitscales.BalanceBoard.Data;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
@@ -16,10 +15,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Resources;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -40,7 +42,7 @@ public class BoardFragment extends SherlockFragment
     }
 
     private BluetoothAdapter btAdapter = null;
-    private BalanceBoard wm = null;
+    private IBalanceBoard wm = null;
     private DisconnectThread disconnectThread = null;
     private StabiliseThread stabiliseThread = null;
     private CalibrateThread calibrateThread = null;
@@ -303,7 +305,11 @@ public class BoardFragment extends SherlockFragment
         if (DEBUG)
             Log.d(TAG, "Using balance board device " + dev.getName() + " " + dev.getAddress());
         btAdapter.cancelDiscovery();
-        wm = new BalanceBoard(btAdapter, dev, wmListener);
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR1) {
+            wm = new BalanceBoardL2capImpl(btAdapter, dev, wmListener); // use l2cap implements
+        } else {
+            wm = new BalanceBoardEvdevImpl(getActivity(), wmListener);
+        }
     }
 
     private void beginStabilise()
@@ -421,9 +427,9 @@ public class BoardFragment extends SherlockFragment
             ((Listener)act).onBoardWeighIn(weight);
     }
 
-    private final BalanceBoard.Listener wmListener = new BalanceBoard.Listener() {
+    private final IBalanceBoard.Listener wmListener = new IBalanceBoard.Listener() {
         @Override
-        public void onWiimoteConnecting(BalanceBoard wm)
+        public void onWiimoteConnecting(IBalanceBoard wm)
         {
             boardView.post(new Runnable() {
                 public void run()
@@ -434,7 +440,7 @@ public class BoardFragment extends SherlockFragment
         }
 
         @Override
-        public void onWiimoteConnected(BalanceBoard wm)
+        public void onWiimoteConnected(IBalanceBoard wm)
         {
             boardView.post(new Runnable() {
                 public void run()
@@ -445,7 +451,7 @@ public class BoardFragment extends SherlockFragment
         }
 
         @Override
-        public void onWiimoteDisconnected(BalanceBoard wm)
+        public void onWiimoteDisconnected(IBalanceBoard wm)
         {
             boardView.post(new Runnable() {
                 public void run()
@@ -460,7 +466,7 @@ public class BoardFragment extends SherlockFragment
         }
 
         @Override
-        public void onWiimoteLEDChange(BalanceBoard wm)
+        public void onWiimoteLEDChange(IBalanceBoard wm)
         {
             final boolean ledOn = wm.getLed(0);
             boardView.post(new Runnable() {
@@ -472,7 +478,7 @@ public class BoardFragment extends SherlockFragment
         }
 
         @Override
-        public void onWiimoteData(BalanceBoard wm, Data data)
+        public void onWiimoteData(IBalanceBoard wm, IBalanceBoard.Data data)
         {
             final float tl = data.getTopLeft();
             final float tr = data.getTopRight();
@@ -510,7 +516,14 @@ public class BoardFragment extends SherlockFragment
             } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
                 if (DEBUG)
                     Log.d(TAG, "BT scan finished");
+
                 if (BoardFragment.this.wm == null) {
+                    for (BluetoothDevice device: btAdapter.getBondedDevices()) {
+                        if ("Nintendo RVL-WBC-01".equals(device.getName())) {
+                            bluetoothFound(device);
+                            return;
+                        }
+                    }
                     if (DEBUG)
                         Log.d(TAG, "No board connected, begin another scan");
                     startBtScan();
@@ -531,7 +544,7 @@ public class BoardFragment extends SherlockFragment
         @Override
         public void run()
         {
-            BalanceBoard wm;
+            IBalanceBoard wm;
 
             try {
                 Thread.sleep(5000);
@@ -617,15 +630,15 @@ public class BoardFragment extends SherlockFragment
                 brSamples[idx] = br;
                 count = Math.min(count + 1, nSamples);
 
-                float maxTl = BalanceBoard.arrayMax(tlSamples, idx, count);
-                float maxTr = BalanceBoard.arrayMax(trSamples, idx, count);
-                float maxBl = BalanceBoard.arrayMax(blSamples, idx, count);
-                float maxBr = BalanceBoard.arrayMax(brSamples, idx, count);
+                float maxTl = Utils.arrayMax(tlSamples, idx, count);
+                float maxTr = Utils.arrayMax(trSamples, idx, count);
+                float maxBl = Utils.arrayMax(blSamples, idx, count);
+                float maxBr = Utils.arrayMax(brSamples, idx, count);
 
-                float minTl = BalanceBoard.arrayMin(tlSamples, idx, count);
-                float minTr = BalanceBoard.arrayMin(trSamples, idx, count);
-                float minBl = BalanceBoard.arrayMin(blSamples, idx, count);
-                float minBr = BalanceBoard.arrayMin(brSamples, idx, count);
+                float minTl = Utils.arrayMin(tlSamples, idx, count);
+                float minTr = Utils.arrayMin(trSamples, idx, count);
+                float minBl = Utils.arrayMin(blSamples, idx, count);
+                float minBr = Utils.arrayMin(brSamples, idx, count);
 
                 idx = (idx + 1) % nSamples;
 
@@ -767,9 +780,9 @@ public class BoardFragment extends SherlockFragment
                 samples[idx] = tl + tr + bl + br;
                 count = Math.min(count + 1, nSamples);
 
-                final float min = BalanceBoard.arrayMin(samples, idx, count);
-                final float max = BalanceBoard.arrayMax(samples, idx, count);
-                final float mean = BalanceBoard.arrayMean(samples, idx, count);
+                final float min = Utils.arrayMin(samples, idx, count);
+                final float max = Utils.arrayMax(samples, idx, count);
+                final float mean = Utils.arrayMean(samples, idx, count);
 
                 idx = (idx + 1) % nSamples;
 
@@ -803,6 +816,19 @@ public class BoardFragment extends SherlockFragment
         }
     }
 
+    boolean dispatchGenericEvent(MotionEvent ev) {
+        if (wm == null) {
+            return false;
+        }
+        return wm.dispatchGenericEvent(ev);
+    }
+
+    boolean dispatchKeyEvent(KeyEvent ev) {
+        if (wm == null) {
+            return false;
+        }
+        return wm.dispatchKeyEvent(ev);
+    }
     public interface Listener
     {
         public void onBoardData(float tl, float tr, float bl, float br);

@@ -12,8 +12,10 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.util.Log;
+import android.view.KeyEvent;
+import android.view.MotionEvent;
 
-public class BalanceBoard
+public class BalanceBoardL2capImpl implements IBalanceBoard
 {
     private static final String TAG = "BalanceBoard";
     private static final boolean DEBUG = true ;
@@ -29,7 +31,8 @@ public class BalanceBoard
     private boolean haveExpansion = false;
     private boolean receivedStatus = false;
     private ArrayList<ReadRequest> readRequests = new ArrayList<ReadRequest>();
-    private ArrayList<WeakReference<Listener>> listeners = new ArrayList<WeakReference<Listener>>();
+    private ArrayList<WeakReference<IBalanceBoard.Listener>> listeners =
+            new ArrayList<WeakReference<IBalanceBoard.Listener>>();
     private Data dat = new Data();
 
     private static final byte CMD_LED = 0x11;
@@ -53,20 +56,21 @@ public class BalanceBoard
 
     private static final short EXP_HANDSHAKE_LEN = 224;
 
-    public BalanceBoard(BluetoothAdapter btAdapter, BluetoothDevice dev, Listener... listeners)
+    public BalanceBoardL2capImpl(BluetoothAdapter btAdapter, BluetoothDevice dev,
+                                 IBalanceBoard.Listener... listeners)
     {
         this.btAdapter = btAdapter;
         this.dev = dev;
 
-        for (Listener l : listeners)
-            this.listeners.add(new WeakReference<Listener>(l));
+        for (IBalanceBoard.Listener l : listeners)
+            this.listeners.add(new WeakReference<IBalanceBoard.Listener>(l));
 
         lock = new Object();
         inputThread = new InputThread(this);
         outputThread = new OutputThread(this);
 
-        for (WeakReference<Listener> wl : this.listeners) {
-            Listener l = wl.get();
+        for (WeakReference<IBalanceBoard.Listener> wl : this.listeners) {
+            IBalanceBoard.Listener l = wl.get();
             if (l != null)
                 l.onWiimoteConnecting(this);
         }
@@ -75,6 +79,7 @@ public class BalanceBoard
         outputThread.start();
     }
 
+    @Override
     public void disconnect()
     {
         if (DEBUG)
@@ -139,18 +144,20 @@ public class BalanceBoard
         if (DEBUG)
             Log.d(TAG, "Notifying listeners of disconnect");
 
-        for (WeakReference<Listener> wl : this.listeners) {
-            Listener l = wl.get();
+        for (WeakReference<IBalanceBoard.Listener> wl : this.listeners) {
+            IBalanceBoard.Listener l = wl.get();
             if (l != null)
                 l.onWiimoteDisconnected(this);
         }
     }
 
+    @Override
     public boolean getLed(int idx)
     {
         return (ledState & (1 << idx)) != 0;
     }
 
+    @Override
     public void setLed(int idx, boolean on)
     {
         if (on)
@@ -162,13 +169,14 @@ public class BalanceBoard
         data[0] = (byte)(ledState << 4);
         sendCmd(CMD_LED, data);
 
-        for (WeakReference<Listener> wl : this.listeners) {
-            Listener l = wl.get();
+        for (WeakReference<IBalanceBoard.Listener> wl : this.listeners) {
+            IBalanceBoard.Listener l = wl.get();
             if (l != null)
                 l.onWiimoteLEDChange(this);
         }
     }
-    
+
+    @Override
     public void setBlinking(boolean blink)
     {
         if (blink == (blinkThread != null))
@@ -187,9 +195,20 @@ public class BalanceBoard
         }
     }
 
+    @Override
     public void setCalibrating(boolean cal)
     {
         dat.setCalibrating(cal);
+    }
+
+    @Override
+    public boolean dispatchGenericEvent(MotionEvent ev) {
+        return false;
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent ev) {
+        return false;
     }
 
     private void setReportType()
@@ -253,8 +272,8 @@ public class BalanceBoard
         kickStatusThread = new KickStatusThread(this);
         kickStatusThread.start();
 
-        for (WeakReference<Listener> wl : this.listeners) {
-            Listener l = wl.get();
+        for (WeakReference<IBalanceBoard.Listener> wl : this.listeners) {
+            IBalanceBoard.Listener l = wl.get();
             if (l != null)
                 l.onWiimoteConnected(this);
         }
@@ -332,8 +351,8 @@ public class BalanceBoard
             dat.setRaw(rtl, rtr, rbl, rbr);
             // if (DEBUG) Log.d(TAG, "rtr=" + rtr + " rbr=" + rbr + " rtl=" + rtl + " rbl=" + rbl);
 
-            for (WeakReference<Listener> wl : this.listeners) {
-                Listener l = wl.get();
+            for (WeakReference<IBalanceBoard.Listener> wl : this.listeners) {
+                IBalanceBoard.Listener l = wl.get();
                 if (l != null)
                     l.onWiimoteData(this, dat);
             }
@@ -466,49 +485,7 @@ public class BalanceBoard
         haveExpansion = false;
     }
 
-    static float arrayMean(float[] a, int last, int count)
-    {
-        float total = 0.0f;
-
-        for (int i = 0; i < count; i++) {
-            int idx = last - i;
-            while (idx < 0)
-                idx += count;
-            total += a[idx];
-        }
-
-        return total / count;
-    }
-
-    static float arrayMin(float[] a, int last, int count)
-    {
-        float min = a[last];
-
-        for (int i = 1; i < count; i++) {
-            int idx = last - i;
-            while (idx < 0)
-                idx += count;
-            min = Math.min(min, a[idx]);
-        }
-
-        return min;
-    }
-
-    static float arrayMax(float[] a, int last, int count)
-    {
-        float max = a[last];
-
-        for (int i = 1; i < count; i++) {
-            int idx = last - i;
-            while (idx < 0)
-                idx += count;
-            max = Math.max(max, a[idx]);
-        }
-
-        return max;
-    }
-
-    public class Data
+    public class Data implements IBalanceBoard.Data
     {
         private int rawTl, rawTr, rawBl, rawBr;
         private int cTl[], cTr[], cBl[], cBr[];
@@ -594,10 +571,10 @@ public class BalanceBoard
             if (smoothCount < nSmoothItems)
                 smoothCount++;
 
-            stl = arrayMean(tl, smoothIdx, smoothCount);
-            str = arrayMean(tr, smoothIdx, smoothCount);
-            sbl = arrayMean(bl, smoothIdx, smoothCount);
-            sbr = arrayMean(br, smoothIdx, smoothCount);
+            stl = Utils.arrayMean(tl, smoothIdx, smoothCount);
+            str = Utils.arrayMean(tr, smoothIdx, smoothCount);
+            sbl = Utils.arrayMean(bl, smoothIdx, smoothCount);
+            sbr = Utils.arrayMean(br, smoothIdx, smoothCount);
 
             /*
              * if (DEBUG) { Log.d(TAG, "new:" + tl[smoothIdx] + "," + tr[smoothIdx] + "," + bl[smoothIdx] + "," +
@@ -607,36 +584,40 @@ public class BalanceBoard
             smoothIdx = (smoothIdx + 1) % nSmoothItems;
         }
 
-        public float getTopLeft()
-        {
-            return stl - calTl;
-        }
-
+        @Override
         public float getTopRight()
         {
             return str - calTr;
         }
 
+        @Override
         public float getBottomLeft()
         {
             return sbl - calBl;
         }
 
+        @Override
         public float getBottomRight()
         {
             return sbr - calBr;
+        }
+
+        @Override
+        public float getTopLeft()
+        {
+            return stl - calTl;
         }
     }
 
     private class InputThread extends Thread
     {
-        private BalanceBoard wm;
+        private BalanceBoardL2capImpl wm;
         private BluetoothSocket sk;
         private boolean canceled = false;
         private boolean ready = false;
         InputStream in = null;
 
-        public InputThread(BalanceBoard wm)
+        public InputThread(BalanceBoardL2capImpl wm)
         {
             this.wm = wm;
         }
@@ -725,13 +706,13 @@ public class BalanceBoard
 
     private class OutputThread extends Thread
     {
-        private BalanceBoard wm;
+        private BalanceBoardL2capImpl wm;
         private BluetoothSocket sk;
         private boolean canceled = false;
         private ArrayList<byte[]> queue = new ArrayList<byte[]>();
         private boolean ready = false;
 
-        public OutputThread(BalanceBoard wm)
+        public OutputThread(BalanceBoardL2capImpl wm)
         {
             this.wm = wm;
         }
@@ -832,10 +813,10 @@ public class BalanceBoard
     {
         private static final String TAG = "KickStatusThread";
 
-        private BalanceBoard wm;
+        private BalanceBoardL2capImpl wm;
         private boolean canceled = false;
 
-        public KickStatusThread(BalanceBoard wm)
+        public KickStatusThread(BalanceBoardL2capImpl wm)
         {
             this.wm = wm;
         }
@@ -892,10 +873,10 @@ public class BalanceBoard
 
     private static class BlinkThread extends Thread
     {
-        private BalanceBoard wm;
+        private BalanceBoardL2capImpl wm;
         private boolean canceled = false;
 
-        public BlinkThread(BalanceBoard wm)
+        public BlinkThread(BalanceBoardL2capImpl wm)
         {
             this.wm = wm;
         }
@@ -932,18 +913,5 @@ public class BalanceBoard
         void onReadDone(byte[] data);
 
         void onReadError();
-    }
-
-    public interface Listener
-    {
-        void onWiimoteConnecting(BalanceBoard wm);
-
-        void onWiimoteConnected(BalanceBoard wm);
-
-        void onWiimoteDisconnected(BalanceBoard wm);
-
-        void onWiimoteLEDChange(BalanceBoard wm);
-
-        void onWiimoteData(BalanceBoard wm, BalanceBoard.Data data);
     }
 }

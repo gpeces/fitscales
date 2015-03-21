@@ -11,6 +11,9 @@ import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentTransaction;
+import android.view.InputDevice;
+import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
 
@@ -146,5 +149,19 @@ public class FitscalesActivity extends SherlockFragmentActivity implements Board
     public void onWeighInDialogDestroyed()
     {
         fragBoard.beginWeighIn();
+    }
+
+    @Override
+    public boolean dispatchGenericMotionEvent (MotionEvent ev) {
+        if (fragBoard.dispatchGenericEvent(ev))
+            return true;
+        return super.dispatchGenericMotionEvent(ev);
+    }
+
+    @Override
+    public boolean dispatchKeyEvent  (KeyEvent ev) {
+        if (fragBoard.dispatchKeyEvent(ev))
+            return true;
+        return super.dispatchKeyEvent(ev);
     }
 }
