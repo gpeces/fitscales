@@ -2,7 +2,6 @@ package eu.paulburton.fitscales.sync;
 
 import android.content.IntentSender;
 import android.os.Bundle;
-import android.os.SystemClock;
 import android.util.Log;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -33,7 +32,10 @@ public class GoogleFitSyncService extends OAuthSyncService {
     }
     @Override
     public void load() {
-
+        user = FitscalesApplication.inst.prefs.getString(prefName + KEY_USER, null);
+        if (user != null) {
+            enabled = true;
+        }
     }
 
     @Override
@@ -100,7 +102,8 @@ public class GoogleFitSyncService extends OAuthSyncService {
             DataSet set = DataSet.create(source);
             set.add(set.createDataPoint()
                     .setFloatValues(weight)
-                    .setTimestamp(System.currentTimeMillis(), TimeUnit.MILLISECONDS));
+                    //.setTimeInterval(startTime, endTime, TimeUnit.MINUTES));
+                    .setTimestamp(System.currentTimeMillis(), TimeUnit.MINUTES));
             return Fitness.HistoryApi.insertData(mClient, set).await(1, TimeUnit.MINUTES)
                 .isSuccess();
         }
@@ -113,7 +116,7 @@ public class GoogleFitSyncService extends OAuthSyncService {
     private void buildFitnessClient() {
         // Create the Google API Client
         mClient = new GoogleApiClient.Builder(FitscalesApplication.activity)
-                .addApi(Fitness.RECORDING_API)
+                .addApi(Fitness.HISTORY_API)
                 .addScope(new Scope(Scopes.FITNESS_BODY_READ_WRITE))
                 .addConnectionCallbacks(
                         new GoogleApiClient.ConnectionCallbacks() {

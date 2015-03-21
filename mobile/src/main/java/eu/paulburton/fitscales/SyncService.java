@@ -5,7 +5,7 @@ import android.os.Build;
 
 public class SyncService
 {
-    private static final String KEY_USER = "_user";
+    protected static final String KEY_USER = "_user";
 
     public String name, prefName;
     public boolean enabled;
