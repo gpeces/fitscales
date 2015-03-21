@@ -9,12 +9,16 @@ import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.common.Scopes;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.Scope;
+import com.google.android.gms.common.api.Status;
 import com.google.android.gms.fitness.Fitness;
 import com.google.android.gms.fitness.data.DataPoint;
 import com.google.android.gms.fitness.data.DataSet;
 import com.google.android.gms.fitness.data.DataSource;
 import com.google.android.gms.fitness.data.DataType;
+import com.google.android.gms.fitness.data.Field;
 
+import java.util.Calendar;
+import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 import eu.paulburton.fitscales.FitscalesActivity;
@@ -94,18 +98,30 @@ public class GoogleFitSyncService extends OAuthSyncService {
             if (mClient == null) return false;
             if (mConnecting) return false;
 
+            Calendar cal = Calendar.getInstance();
+            Date now = new Date();
+            cal.setTime(now);
+            long endTime = cal.getTimeInMillis();
+            cal.add(Calendar.HOUR_OF_DAY, -1);
+            long startTime = cal.getTimeInMillis();
+
             DataSource source = new DataSource.Builder()
                     .setAppPackageName(FitscalesApplication.inst)
                     .setDataType(DataType.TYPE_WEIGHT)
                     .setType(DataSource.TYPE_RAW)
                     .build();
             DataSet set = DataSet.create(source);
-            set.add(set.createDataPoint()
-                    .setFloatValues(weight)
-                    //.setTimeInterval(startTime, endTime, TimeUnit.MINUTES));
-                    .setTimestamp(System.currentTimeMillis(), TimeUnit.MINUTES));
-            return Fitness.HistoryApi.insertData(mClient, set).await(1, TimeUnit.MINUTES)
-                .isSuccess();
+            DataPoint point = set.createDataPoint()
+                    .setTimeInterval(startTime, endTime, TimeUnit.MILLISECONDS);
+                    //.setTimestamp(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
+            point.getValue(Field.FIELD_WEIGHT).setFloat(weight);
+            set.add(point);
+
+            Log.i(TAG, "set = " + set + " point = " + point);
+            Status status = Fitness.HistoryApi.insertData(mClient, set)
+                    .await(1, TimeUnit.MINUTES);
+            Log.i(TAG, "status = " + status + ": msg: " + status.getStatusMessage());
+            return status.isSuccess();
         }
     }
 
