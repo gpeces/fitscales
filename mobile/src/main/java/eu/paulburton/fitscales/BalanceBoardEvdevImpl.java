@@ -140,6 +140,7 @@ public class BalanceBoardEvdevImpl implements IBalanceBoard, InputManager.InputD
         }
         return false;
     }
+
     private boolean isBalanceBoard(InputDevice dev) {
         return dev.getProductId() == PRODUCT_ID &&
                 dev.getVendorId() == VENDOR_ID;

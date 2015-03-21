@@ -829,6 +829,7 @@ public class BoardFragment extends SherlockFragment
         }
         return wm.dispatchKeyEvent(ev);
     }
+
     public interface Listener
     {
         public void onBoardData(float tl, float tr, float bl, float br);

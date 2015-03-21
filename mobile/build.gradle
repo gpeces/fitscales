@@ -5,7 +5,7 @@ android {
     buildToolsVersion '21.1.2'
     defaultConfig {
         applicationId "eu.paulburton.fitscales"
-        minSdkVersion 18
+        minSdkVersion 19
         targetSdkVersion 22
         versionCode 1
         versionName "1.0"
@@ -27,4 +27,5 @@ dependencies {
     compile 'com.github.japgolly.android:svg-android:2.0.6'
     compile 'com.android.support:support-v4:18.0.+'
     compile 'com.actionbarsherlock:actionbarsherlock:4.4.0@aar'
+    compile 'com.google.android.gms:play-services:7.0.0'
 }

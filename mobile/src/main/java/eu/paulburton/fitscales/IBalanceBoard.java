@@ -13,6 +13,7 @@ public interface IBalanceBoard {
     public void setLed(int index, boolean on);
     public void setBlinking(boolean blinking);
     public void setCalibrating(boolean cal);
+
     public boolean dispatchGenericEvent(MotionEvent ev);
     public boolean dispatchKeyEvent(KeyEvent ev);
 

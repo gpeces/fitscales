@@ -4,6 +4,7 @@ import com.actionbarsherlock.app.SherlockFragmentActivity;
 import com.actionbarsherlock.view.MenuItem;
 import eu.paulburton.fitscales.sync.OAuthSyncService;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.os.Build;
@@ -23,10 +24,13 @@ public class FitscalesActivity extends SherlockFragmentActivity implements Board
     private View viewSettings;
     private BoardFragment fragBoard;
 
+    public static final int REQUEST_OAUTH = 1000;
+
     @Override
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
+        FitscalesApplication.activity = this;
         setContentView(R.layout.activity);
 
         scale = (ScaleView)findViewById(R.id.scale);
@@ -46,6 +50,12 @@ public class FitscalesActivity extends SherlockFragmentActivity implements Board
         });
 
         setScalePrev();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        FitscalesApplication.activity = null;
     }
 
     private void setScalePrev()
@@ -164,4 +174,14 @@ public class FitscalesActivity extends SherlockFragmentActivity implements Board
             return true;
         return super.dispatchKeyEvent(ev);
     }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_OAUTH) {
+            if (resultCode == RESULT_OK) {
+                FitscalesApplication.inst.reconnect();;
+            }
+        }
+    }
+
 }

@@ -40,6 +40,8 @@ public class SyncService
     public void disconnect()
     {
     }
+
+    public void reconnect() {}
     
     public boolean isConnecting()
     {

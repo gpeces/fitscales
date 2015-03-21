@@ -24,7 +24,7 @@ public class OAuthSyncService extends SyncService
     private static final String KEY_SECRET = "_oa_secret";
 
     private AuthThread authThread;
-    private Listener listener;
+    protected Listener listener;
     private Class<? extends Api> oaApiClass;
     protected OAuthService oaService;
     protected Token oaToken;
