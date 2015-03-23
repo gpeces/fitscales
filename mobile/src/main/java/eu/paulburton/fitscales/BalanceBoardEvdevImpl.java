@@ -53,6 +53,7 @@ public class BalanceBoardEvdevImpl implements IBalanceBoard, InputManager.InputD
                     l.onWiimoteDisconnected(this);
 
             }
+            listeners.clear();
             mDevice = null;
         }
     }
@@ -128,7 +129,6 @@ public class BalanceBoardEvdevImpl implements IBalanceBoard, InputManager.InputD
                 l.onWiimoteData(this, mData);
             }
         }
-
         return true;
     }
 
@@ -145,6 +145,7 @@ public class BalanceBoardEvdevImpl implements IBalanceBoard, InputManager.InputD
         return dev.getProductId() == PRODUCT_ID &&
                 dev.getVendorId() == VENDOR_ID;
     }
+
     @Override
     public void onInputDeviceAdded(int i) {
         InputDevice dev = mIm.getInputDevice(i);
@@ -168,9 +169,7 @@ public class BalanceBoardEvdevImpl implements IBalanceBoard, InputManager.InputD
 
     @Override
     public void onInputDeviceRemoved(int i) {
-        InputDevice dev = mIm.getInputDevice(i);
-        Log.d(TAG, "input device removed " + dev);
-        if (isBalanceBoard(dev)) {
+        if (mDevice != null && mDevice.getId() == i) {
             for (WeakReference<IBalanceBoard.Listener> wl : this.listeners) {
                 IBalanceBoard.Listener l = wl.get();
                 if (l != null)
