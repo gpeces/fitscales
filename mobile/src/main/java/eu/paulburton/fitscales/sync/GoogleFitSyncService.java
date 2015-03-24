@@ -1,7 +1,11 @@
 package eu.paulburton.fitscales.sync;
 
 import android.content.IntentSender;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -11,18 +15,24 @@ import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.Scope;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.fitness.Fitness;
+import com.google.android.gms.fitness.data.Bucket;
 import com.google.android.gms.fitness.data.DataPoint;
 import com.google.android.gms.fitness.data.DataSet;
 import com.google.android.gms.fitness.data.DataSource;
 import com.google.android.gms.fitness.data.DataType;
+import com.google.android.gms.fitness.data.Device;
 import com.google.android.gms.fitness.data.Field;
+import com.google.android.gms.fitness.request.DataReadRequest;
+import com.google.android.gms.fitness.result.DataReadResult;
 
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 import eu.paulburton.fitscales.FitscalesActivity;
 import eu.paulburton.fitscales.FitscalesApplication;
+import eu.paulburton.fitscales.Prefs;
 import eu.paulburton.fitscales.SyncService;
 
 /**
@@ -30,6 +40,11 @@ import eu.paulburton.fitscales.SyncService;
  */
 public class GoogleFitSyncService extends OAuthSyncService {
     private static final String TAG = "GoogleFit";
+    private static final String UUID = "0x057e0306"; // vid + pid
+    private static final Device BALANCE_BOARD =
+            new Device("Nintendo", "Wii Balance Board", UUID, Device.TYPE_SCALE);
+    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat();
+    private static final boolean DEBUG = true;
 
     public GoogleFitSyncService() {
         super("GoogleFit", "googleFit");
@@ -37,7 +52,7 @@ public class GoogleFitSyncService extends OAuthSyncService {
     @Override
     public void load() {
         user = FitscalesApplication.inst.prefs.getString(prefName + KEY_USER, null);
-        if (user != null) {
+        if (!TextUtils.isEmpty(user)) {
             enabled = true;
         }
     }
@@ -75,6 +90,9 @@ public class GoogleFitSyncService extends OAuthSyncService {
             }
             mConnecting = false;
             enabled = false;
+            SharedPreferences.Editor edit = FitscalesApplication.inst.prefs.edit();
+            edit.remove(prefName + KEY_USER);
+            Prefs.save(edit);
         }
     }
 
@@ -92,8 +110,7 @@ public class GoogleFitSyncService extends OAuthSyncService {
     }
 
     @Override
-    public boolean syncWeight(float weight)
-    {
+    public boolean syncWeight(float weight) {
         synchronized (this) {
             if (mClient == null) return false;
             if (mConnecting) return false;
@@ -102,26 +119,73 @@ public class GoogleFitSyncService extends OAuthSyncService {
             Date now = new Date();
             cal.setTime(now);
             long endTime = cal.getTimeInMillis();
-            cal.add(Calendar.HOUR_OF_DAY, -1);
+            cal.add(Calendar.MINUTE, -1);
             long startTime = cal.getTimeInMillis();
 
             DataSource source = new DataSource.Builder()
                     .setAppPackageName(FitscalesApplication.inst)
                     .setDataType(DataType.TYPE_WEIGHT)
                     .setType(DataSource.TYPE_RAW)
+                    .setDevice(BALANCE_BOARD)
                     .build();
             DataSet set = DataSet.create(source);
             DataPoint point = set.createDataPoint()
                     .setTimeInterval(startTime, endTime, TimeUnit.MILLISECONDS);
-                    //.setTimestamp(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
             point.getValue(Field.FIELD_WEIGHT).setFloat(weight);
             set.add(point);
-
-            Log.i(TAG, "set = " + set + " point = " + point);
             Status status = Fitness.HistoryApi.insertData(mClient, set)
                     .await(1, TimeUnit.MINUTES);
-            Log.i(TAG, "status = " + status + ": msg: " + status.getStatusMessage());
+            if (DEBUG) {
+                Log.i(TAG, "set = " + set + " point = " + point);
+                Log.i(TAG, "insert status = " + status + ": msg: " + status.getStatusMessage());
+                printInsertedData();
+            }
             return status.isSuccess();
+        }
+    }
+
+    private void printInsertedData() {
+        Calendar cal = Calendar.getInstance();
+
+        cal.setTime(new Date());
+        long    endTime = cal.getTimeInMillis();
+        cal.add(Calendar.DATE, -7);
+        long   startTime = cal.getTimeInMillis();
+
+        DataReadRequest readRequest = new DataReadRequest.Builder()
+                .aggregate(DataType.TYPE_WEIGHT, DataType.AGGREGATE_WEIGHT_SUMMARY)
+                .bucketByTime(1, TimeUnit.HOURS)
+                .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
+                .setLimit(500)
+                .build();
+        DataReadResult dataReadResult =
+                Fitness.HistoryApi.readData(mClient, readRequest).await(1, TimeUnit.MINUTES);
+        Log.i(TAG, "read result :" + dataReadResult);
+
+        if (dataReadResult.getBuckets().size() > 0) {
+            for (Bucket b : dataReadResult.getBuckets()) {
+                for (DataSet s : b.getDataSets()) {
+                    dumpDataSet(s);
+                }
+            }
+        } else {
+            for (DataSet s: dataReadResult.getDataSets()) {
+                dumpDataSet(s)    ;
+            }
+        }
+    }
+
+    private void dumpDataSet(DataSet set) {
+        Log.i(TAG, "Data returned for Data type: " + set.getDataType().getName());
+        for (DataPoint dp : set.getDataPoints()) {
+            Log.i(TAG, "Data point:");
+            Log.i(TAG, "\tType: " + dp.getDataType().getName());
+            Log.i(TAG, "\tStart: " + DATE_FORMAT.format(dp.getStartTime(TimeUnit.MILLISECONDS)));
+            Log.i(TAG, "\tEnd: " + DATE_FORMAT.format(dp.getEndTime(TimeUnit.MILLISECONDS)));
+            for (Field field : dp.getDataType().getFields()) {
+                Log.i(TAG, "\tField: " + field.getName() +
+                        " Value: " + dp.getValue(field));
+            }
         }
     }
 
@@ -143,6 +207,9 @@ public class GoogleFitSyncService extends OAuthSyncService {
                                 mConnecting = false;
                                 enabled = true;
                                 user = "user";
+                                SharedPreferences.Editor edit = FitscalesApplication.inst.prefs.edit();
+                                edit.putString(prefName + KEY_USER, user);
+                                Prefs.save(edit);
                                 listener.oauthDone(GoogleFitSyncService.this);
                                 // Now you can make calls to the Fitness APIs.
                                 // Put application specific code here.
