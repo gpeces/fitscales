@@ -1,6 +1,7 @@
 package eu.paulburton.fitscales;
 
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.app.ActionBar;
 import android.view.MenuItem;
 import eu.paulburton.fitscales.sync.OAuthSyncService;
 
