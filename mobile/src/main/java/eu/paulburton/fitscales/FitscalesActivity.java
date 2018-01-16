@@ -1,7 +1,7 @@
 package eu.paulburton.fitscales;
 
-import com.actionbarsherlock.app.SherlockFragmentActivity;
-import com.actionbarsherlock.view.MenuItem;
+import android.support.v7.app.AppCompatActivity;
+import android.view.MenuItem;
 import eu.paulburton.fitscales.sync.OAuthSyncService;
 
 import android.content.Intent;
@@ -18,7 +18,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
 
-public class FitscalesActivity extends SherlockFragmentActivity implements BoardFragment.Listener, SettingsFragment.Listener, WeighInDialogFragment.Listener
+public class FitscalesActivity extends AppCompatActivity implements BoardFragment.Listener, SettingsFragment.Listener, WeighInDialogFragment.Listener
 {
     private ScaleView scale;
     private View viewSettings;

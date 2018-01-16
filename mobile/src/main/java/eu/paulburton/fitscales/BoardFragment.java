@@ -2,10 +2,10 @@ package eu.paulburton.fitscales;
 
 import java.util.Arrays;
 
-import com.actionbarsherlock.app.SherlockFragment;
-import com.actionbarsherlock.view.Menu;
-import com.actionbarsherlock.view.MenuInflater;
-import com.actionbarsherlock.view.MenuItem;
+import android.support.v4.app.Fragment;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
@@ -29,7 +29,7 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-public class BoardFragment extends SherlockFragment
+public class BoardFragment extends Fragment
 {
     private static final String TAG = "BoardFragment";
     private static final boolean DEBUG = false;

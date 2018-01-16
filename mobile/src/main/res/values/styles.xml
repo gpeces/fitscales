@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="FitScales" parent="@style/Theme.Sherlock">
+    <style name="FitScales" parent="@style/Theme.AppCompat.Light.DarkActionBar">
         <item name="actionBarStyle">@style/FitScalesActionBar</item>
         <item name="android:actionBarStyle">@style/FitScalesActionBar</item>
         
         <item name="android:windowBackground">@drawable/window_background</item>
     </style>
 
-    <style name="FitScalesActionBar" parent="Widget.Sherlock.ActionBar.Solid">
+    <style name="FitScalesActionBar" parent="Widget.AppCompat.Light.ActionBar.Solid.Inverse">
         <item name="background">@drawable/action_bar_background</item>
         <item name="android:background">@drawable/action_bar_background</item>
     </style>

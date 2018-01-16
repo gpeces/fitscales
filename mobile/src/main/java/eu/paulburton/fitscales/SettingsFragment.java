@@ -3,7 +3,7 @@ package eu.paulburton.fitscales;
 import java.math.BigDecimal;
 import java.util.List;
 
-import com.actionbarsherlock.app.SherlockFragment;
+import android.support.v4.app.Fragment;
 import eu.paulburton.fitscales.sync.OAuthSyncService;
 import eu.paulburton.fitscales.widget.Switch;
 
@@ -43,7 +43,7 @@ import android.widget.TabWidget;
 import android.widget.TableRow;
 import android.widget.TextView;
 
-public class SettingsFragment extends SherlockFragment
+public class SettingsFragment extends Fragment
 {
     private static final String TAG = "SettingsFragment";
     private static final boolean DEBUG = false;
