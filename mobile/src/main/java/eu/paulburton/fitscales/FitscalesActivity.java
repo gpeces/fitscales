@@ -39,7 +39,9 @@ public class FitscalesActivity extends AppCompatActivity implements BoardFragmen
 
         fragBoard = (BoardFragment)getSupportFragmentManager().findFragmentById(R.id.fragBoard);
 
-        getSupportActionBar().setHomeButtonEnabled(true);
+        ActionBar actionbar = getSupportActionBar();
+        if (actionbar != null)
+            actionbar.setHomeButtonEnabled(true);
 
         viewSettings.setOnClickListener(new OnClickListener() {
             @Override
